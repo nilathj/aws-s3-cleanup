@@ -1,15 +1,15 @@
 const AWS = require('aws-sdk');
 const EC2 = new AWS.EC2();
 const S3 = new AWS.S3();
-const s3WebRoot = 'pexa_web/resources/';
+const s3WebRoot = 'web/resources/';
 const knownWebFolders = [`${s3WebRoot}applet/`, `${s3WebRoot}dist/`, `${s3WebRoot}dojo/`, `${s3WebRoot}error/`, `${s3WebRoot}http_errors/`, `${s3WebRoot}image/`, `${s3WebRoot}images/`];
-let bucket = 'pexa-static-np';
+let bucket = 's3-bucket-name';
 let action = 'list';
 let retainDays = 30;
 
 /**
  * This lambda is used to clean up old static web resources that are no longer referenced by any app server deployment. To trigger the lambda
- * send a payload { "bucket": "pexa-static-np", "action": "list", "retainDays": 30 }.  Use action:list to list the folder objects that this lambda
+ * send a payload { "bucket": "s3-bucket-name", "action": "list", "retainDays": 30 }.  Use action:list to list the folder objects that this lambda
  * will operate on. Use action:delete to delete the folder objects.  Use retainDays:1 to delete all unused folder objects without considering an
  * expiry date.
  *
@@ -38,14 +38,14 @@ const parseEvents = (event) => {
         throw new Error(`Error: event is not defined`);
     }
 
-    bucket = event.bucket || 'pexa-static-np';
+    bucket = event.bucket || 's3-bucket-name';
     action = event.action || 'list';
     retainDays = event.retainDays || 60;
 
     if (!action === 'delete' || !action === 'list') {
         throw new Error(`Error: action needs to be either list or delete`);
     }
-    console.log(`Starting pexa-static-np-cleanup bucket:${bucket} action:${action} retainDays:${retainDays}`);
+    console.log(`Starting aws-s3-cleanup bucket:${bucket} action:${action} retainDays:${retainDays}`);
 };
 
 const getExpiredFolders = async (foldersToBeDeleted) => {
@@ -64,7 +64,7 @@ const getExpiredFolders = async (foldersToBeDeleted) => {
 
 const getDeployedS3Folders = async (root) => {
     let params = {
-        Bucket: 'pexa-static-np',
+        Bucket: bucket,
         Delimiter: '/',
         Prefix: `${root}`,
     };
@@ -82,7 +82,7 @@ const getDeployedS3Folders = async (root) => {
 
 const getLastModifiedDate = async (folder) => {
     let params = {
-        Bucket: 'pexa-static-np',
+        Bucket: bucket,
         Delimiter: '',
         Prefix: `${folder}`,
         MaxKeys: 1
@@ -154,7 +154,7 @@ const getS3FoldersToBeDeleted = async (s3DeployedVersions, inUseappVersions) => 
     });
 
     const toBeDeleted = s3DeployedVersions.filter(function (folder) {
-        const folderRegex = new RegExp('(pexa_web\/resources\/)(.*?)(\/)', 'g');
+        const folderRegex = new RegExp('(web\/resources\/)(.*?)(\/)', 'g');
         const match = folderRegex.exec(folder);
         return !inUseappFolders.includes(match[2]);
     });
